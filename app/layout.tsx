@@ -1,10 +1,11 @@
 import { Analytics } from '@vercel/analytics/next'
 import type { Metadata, Viewport } from 'next'
 import './globals.css'
+import { PwaRegister } from '@/components/pwa-register'
 
 export const metadata: Metadata = {
   title: 'UseFrete V2 | Matching de transporte pesado',
-  description: 'Conectamos demandas urgentes de carga pesada a transportadores compatíveis.',
+  description: 'Conectamos cargas de baixa antecedência a transportadores compatíveis.',
   icons: {
     icon: [
       {
@@ -38,6 +39,7 @@ export default function RootLayout({
     <html lang="pt-BR" className="light">
       <body className="antialiased">
         {children}
+        <PwaRegister />
         {process.env.NODE_ENV === 'production' && <Analytics />}
       </body>
     </html>
