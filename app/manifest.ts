@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Use Frete · Demonstração STS',
     short_name: 'Use Frete',
-    description: 'Protótipo demonstrativo de matching para transporte pesado.',
+    description: 'Demonstração de compatibilidade para cargas de baixa antecedência.',
     start_url: '/',
     scope: '/',
     display: 'standalone',

@@ -5,7 +5,7 @@ import { PwaRegister } from '@/components/pwa-register'
 
 export const metadata: Metadata = {
   title: 'UseFrete V2 | Matching de transporte pesado',
-  description: 'Conectamos demandas urgentes de carga pesada a transportadores compatíveis.',
+  description: 'Conectamos cargas de baixa antecedência a transportadores compatíveis.',
   icons: {
     icon: [
       {

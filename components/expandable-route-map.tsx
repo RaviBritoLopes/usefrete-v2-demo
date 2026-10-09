@@ -31,7 +31,7 @@ export function ExpandableRouteMap({ origin, destination, route }: { origin: Coo
       <section role="dialog" aria-modal="true" aria-label="Mapa expandido do transporte" className="flex h-[calc(100dvh-1rem)] w-full max-w-6xl flex-col overflow-hidden rounded-2xl bg-white shadow-2xl sm:h-[calc(100dvh-3rem)] sm:rounded-3xl">
         <div className="flex shrink-0 items-center justify-between gap-3 px-4 py-3"><div><p className="text-xs font-black uppercase tracking-wider text-[#f5a800]">Acompanhamento</p><h2 className="text-lg font-black text-[#071a9a]">Mapa da operação</h2></div><button ref={closeRef} type="button" onClick={() => setExpanded(false)} className="flex min-h-11 items-center gap-2 rounded-xl bg-[#071a9a] px-4 text-sm font-black text-white" aria-label="Fechar mapa"><X className="size-4" /> Fechar</button></div>
         <div className="min-h-0 flex-1"><RouteMap origin={origin} destination={destination} route={route} expanded /></div>
-        <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500">Rota e posição do motorista simuladas · use dois dedos para mover ou ampliar no celular.</p>
+        <p className="shrink-0 px-4 py-2 text-[11px] text-slate-500">Rota e posição do transportador simuladas · use dois dedos para mover ou ampliar no celular.</p>
       </section>
     </div>, document.body)}
   </>
