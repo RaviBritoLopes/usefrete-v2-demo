@@ -1,4 +1,4 @@
-const CACHE = 'usefrete-fusion-shell-v2'
+const CACHE = 'usefrete-fusion-shell-v3'
 const SHELL = ['/', '/manifest.webmanifest', '/usefrete-logo.png', '/offline-route.svg', '/offline-route-portrait.svg', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {

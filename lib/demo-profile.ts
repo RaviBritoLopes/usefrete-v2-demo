@@ -22,20 +22,33 @@ export const demoProfiles: DemoProfile[] = [
 
 const profilesKey = 'usefrete-fusion-profiles-v1'
 const activeKey = 'usefrete-fusion-active-v1'
+let volatileProfiles: DemoProfile[] = []
+let volatileActiveId: string | null = null
+
+export function createProfileId() {
+  return globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(36).slice(2)}`
+}
 
 export function readProfiles(): DemoProfile[] {
+  let saved: DemoProfile[] = []
   try {
-    const saved = JSON.parse(localStorage.getItem(profilesKey) ?? '[]')
-    return [...demoProfiles, ...(Array.isArray(saved) ? saved : [])]
-  } catch { return demoProfiles }
+    const value = JSON.parse(localStorage.getItem(profilesKey) ?? '[]')
+    if (Array.isArray(value)) saved = value
+  } catch { /* dados disponíveis apenas nesta aba */ }
+  return [...new Map([...demoProfiles, ...saved, ...volatileProfiles].map((profile) => [profile.id, profile])).values()]
 }
 
 export function saveProfile(profile: DemoProfile) {
   const custom = readProfiles().filter((item) => !item.id.startsWith('demo-'))
-  localStorage.setItem(profilesKey, JSON.stringify([...custom, profile]))
-  sessionStorage.setItem(activeKey, profile.id)
+  volatileProfiles = [...custom.filter((item) => item.id !== profile.id), profile]
+  try { localStorage.setItem(profilesKey, JSON.stringify(volatileProfiles)) } catch { /* fallback em memória */ }
+  setActiveProfile(profile.id)
 }
 
-export function setActiveProfile(id: string) { sessionStorage.setItem(activeKey, id) }
-export function readActiveProfile() { return readProfiles().find((profile) => profile.id === sessionStorage.getItem(activeKey)) ?? null }
-export function clearActiveProfile() { sessionStorage.removeItem(activeKey) }
+export function setActiveProfile(id: string) { volatileActiveId = id; try { sessionStorage.setItem(activeKey, id) } catch { /* fallback em memória */ } }
+export function readActiveProfile() {
+  let id = volatileActiveId
+  try { id = sessionStorage.getItem(activeKey) ?? id } catch { /* fallback em memória */ }
+  return readProfiles().find((profile) => profile.id === id) ?? null
+}
+export function clearActiveProfile() { volatileActiveId = null; try { sessionStorage.removeItem(activeKey) } catch { /* fallback em memória */ } }
