@@ -13,7 +13,7 @@ export type DemoOffer = {
 }
 
 export type DemoWorkflow = {
-  phase: 'none' | 'awaiting' | 'interested' | 'accepted' | 'in_progress' | 'direct'
+  phase: 'none' | 'awaiting' | 'interested' | 'accepted' | 'in_progress' | 'completed' | 'direct'
   offer: DemoOffer | null
   stage: number
 }
@@ -24,7 +24,7 @@ const key = 'usefrete-fusion-workflow-v1'
 export function readDemoWorkflow(): DemoWorkflow {
   try {
     const stored = JSON.parse(localStorage.getItem(key) ?? 'null')
-    if (stored && typeof stored === 'object' && ['none', 'awaiting', 'interested', 'accepted', 'in_progress', 'direct'].includes(stored.phase)) {
+    if (stored && typeof stored === 'object' && ['none', 'awaiting', 'interested', 'accepted', 'in_progress', 'completed', 'direct'].includes(stored.phase)) {
       return { phase: stored.phase, offer: stored.offer ?? null, stage: Number.isInteger(stored.stage) ? stored.stage : 0 }
     }
   } catch { /* armazenamento indisponível */ }
