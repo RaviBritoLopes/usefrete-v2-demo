@@ -153,7 +153,9 @@ export const matchingCriteria = [
 ]
 
 export const trackingStages = [
-  'Transportador confirmado',
+  'Interesse enviado',
+  'Proposta aceita',
+  'Transporte confirmado',
   'A caminho da coleta',
   'Chegou ao local',
   'Carga coletada',

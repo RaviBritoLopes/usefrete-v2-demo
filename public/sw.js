@@ -1,5 +1,5 @@
-const CACHE = 'usefrete-fusion-shell-v1'
-const SHELL = ['/', '/manifest.webmanifest', '/usefrete-logo.png', '/offline-route.svg', '/icon-192.png', '/icon-512.png']
+const CACHE = 'usefrete-fusion-shell-v2'
+const SHELL = ['/', '/manifest.webmanifest', '/usefrete-logo.png', '/offline-route.svg', '/offline-route-portrait.svg', '/icon-192.png', '/icon-512.png']
 
 self.addEventListener('install', (event) => {
   event.waitUntil(caches.open(CACHE).then((cache) => cache.addAll(SHELL)).then(() => self.skipWaiting()))
