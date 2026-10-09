@@ -12,6 +12,10 @@ export type Carrier = {
   availability: string
   eta: string
   price: string
+  priceRange: string
+  priceStatus: string
+  detour: string
+  completion: string
   match: number
   note: string
 }
@@ -27,6 +31,7 @@ export type Opportunity = {
   collection: string
   detour: string
   price: string
+  priceRange: string
   match: number
   company: string
   dimensions: string
@@ -48,6 +53,10 @@ export const carriers: Carrier[] = [
     availability: 'Disponível agora',
     eta: '35 min',
     price: 'R$ 1.280',
+    priceRange: 'R$ 1.190–1.350',
+    priceStatus: 'Dentro da média',
+    detour: '+4 km',
+    completion: '98% concluídas',
     match: 96,
     note: 'Melhor combinação entre rota, veículo e horário.',
   },
@@ -65,6 +74,10 @@ export const carriers: Carrier[] = [
     availability: 'Disponível às 16h30',
     eta: '50 min',
     price: 'R$ 1.190',
+    priceRange: 'R$ 1.190–1.350',
+    priceStatus: 'Competitiva',
+    detour: '+7 km',
+    completion: '97% concluídas',
     match: 92,
     note: 'Ótimo preço e disponibilidade dentro da janela.',
   },
@@ -82,6 +95,10 @@ export const carriers: Carrier[] = [
     availability: 'Retornando vazio',
     eta: '1h05',
     price: 'R$ 1.340',
+    priceRange: 'R$ 1.190–1.350',
+    priceStatus: 'Dentro da média',
+    detour: '+11 km',
+    completion: '99% concluídas',
     match: 89,
     note: 'Retorno vazio compatível com o destino informado.',
   },
@@ -99,6 +116,7 @@ export const opportunities: Opportunity[] = [
     collection: 'Hoje até 18h30',
     detour: '+8 km',
     price: 'R$ 1.150',
+    priceRange: 'R$ 1.090–1.250',
     match: 94,
     company: 'Construtora Atlântico',
     dimensions: '4,8 × 2,1 × 1,7 m',
@@ -115,6 +133,7 @@ export const opportunities: Opportunity[] = [
     collection: 'Amanhã, 08h–10h',
     detour: '+14 km',
     price: 'R$ 890',
+    priceRange: 'R$ 840–980',
     match: 88,
     company: 'Norte Máquinas',
     dimensions: '3,2 × 1,9 × 1,8 m',
@@ -123,7 +142,8 @@ export const opportunities: Opportunity[] = [
 ]
 
 export const matchingCriteria = [
-  'Rota e localização',
+  'Localização',
+  'Rota',
   'Tipo de veículo',
   'Carroceria',
   'Capacidade de carga',

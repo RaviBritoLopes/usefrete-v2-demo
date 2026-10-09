@@ -15,7 +15,6 @@ import {
   LocateFixed,
   Navigation,
   Package,
-  Route,
   ShieldCheck,
   Sparkles,
   Star,
@@ -30,11 +29,14 @@ import {
   type Carrier,
   type Opportunity,
 } from '@/lib/usefrete-data'
+import { DemoAuth } from './demo-auth'
+import { clearActiveProfile, readActiveProfile, type DemoProfile } from '@/lib/demo-profile'
 
 const RouteMap = dynamic(() => import('./route-map').then((module) => module.RouteMap), { ssr: false })
 
 type Screen =
-  | 'welcome'
+  | 'auth'
+  | 'contractor'
   | 'route'
   | 'cargo'
   | 'vehicle'
@@ -44,35 +46,42 @@ type Screen =
   | 'tracking'
   | 'carrier'
   | 'opportunity'
+  | 'operation'
 
 type RequestData = {
   origin: string
   destination: string
   date: string
+  customDate: string
   window: string
   cargoType: string
   weight: string
   dimensions: string
   volumes: string
   notes: string
+  photoName: string
   knowsVehicle: boolean
   vehicle: string
   body: string
 }
 
 type Availability = 'now' | 'later' | 'route' | 'empty' | 'offline'
+type OperationSettings = { origin: string; destination: string; departure: string; capacity: string; maxDetour: string }
+const defaultOperation: OperationSettings = { origin: 'Fortaleza', destination: 'Sobral', departure: '17:30', capacity: '5 t', maxDetour: '15' }
 
 const logoUrl = '/usefrete-logo.png'
 const demoRequest: RequestData = {
   origin: 'Messejana, Fortaleza',
   destination: 'Centro, Sobral',
   date: 'Hoje',
+  customDate: '',
   window: '16h–18h',
   cargoType: 'Estruturas',
   weight: '4,2 t',
   dimensions: '4,8 × 2,1 × 1,7 m',
   volumes: '6 volumes',
   notes: 'Estruturas metálicas embaladas. Coleta com empilhadeira no local.',
+  photoName: '',
   knowsVehicle: false,
   vehicle: 'Truck',
   body: 'Carroceria aberta',
@@ -149,40 +158,8 @@ function Progress({ active }: { active: number }) {
   )
 }
 
-function Welcome({ onContractor, onCarrier }: { onContractor: () => void; onCarrier: () => void }) {
-  return (
-    <main className="min-h-screen bg-[#f4f5ef]">
-      <section className="usefrete-hero px-4 pb-9 pt-5 text-white sm:px-8">
-        <div className="mx-auto max-w-5xl">
-          <Logo />
-          <div className="mt-8 max-w-2xl">
-            <span className="inline-flex items-center gap-2 rounded-full bg-white/10 px-3 py-1.5 text-xs font-bold ring-1 ring-white/20"><Sparkles className="size-3.5 text-[#f5a800]" /> UseFrete V2 · Matching inteligente</span>
-            <h1 className="mt-5 text-4xl font-black leading-[1.05] tracking-[-0.04em] sm:text-6xl">Sua carga encontra o transporte certo.</h1>
-            <p className="mt-4 max-w-xl text-base leading-7 text-blue-100 sm:text-lg">Conte o que precisa transportar. A UseFrete analisa rota, veículo, capacidade e disponibilidade para mostrar apenas opções compatíveis.</p>
-          </div>
-        </div>
-      </section>
-      <section className="relative mx-auto -mt-1 grid max-w-5xl gap-4 px-4 pb-12 sm:grid-cols-2 sm:px-8">
-        <button type="button" onClick={onContractor} className="group rounded-[1.75rem] bg-[#fffefa] p-6 text-left shadow-[0_18px_50px_rgba(7,26,154,0.10)] ring-1 ring-slate-100 transition hover:-translate-y-1">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-orange-50 text-[#f5a800]"><Package className="size-6" /></span>
-          <div className="mt-5"><Eyebrow>Para empresas e contratantes</Eyebrow></div>
-          <h2 className="mt-2 text-2xl font-black text-[#071a9a]">Preciso de transporte</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Estruture sua demanda e encontre transportadores realmente compatíveis.</p>
-          <span className="mt-5 flex items-center gap-2 text-sm font-black text-[#071a9a]">Começar solicitação <ArrowRight className="size-4 transition group-hover:translate-x-1" /></span>
-        </button>
-        <button type="button" onClick={onCarrier} className="group rounded-[1.75rem] bg-[#fffefa] p-6 text-left shadow-[0_18px_50px_rgba(7,26,154,0.08)] ring-1 ring-slate-100 transition hover:-translate-y-1">
-          <span className="flex size-12 items-center justify-center rounded-2xl bg-blue-50 text-[#071a9a]"><Truck className="size-6" /></span>
-          <div className="mt-5"><Eyebrow>Para quem transporta</Eyebrow></div>
-          <h2 className="mt-2 text-2xl font-black text-[#071a9a]">Sou transportador</h2>
-          <p className="mt-2 text-sm leading-6 text-slate-500">Informe sua disponibilidade e receba oportunidades alinhadas à sua rota.</p>
-          <span className="mt-5 flex items-center gap-2 text-sm font-black text-[#071a9a]">Ver oportunidades <ArrowRight className="size-4 transition group-hover:translate-x-1" /></span>
-        </button>
-        <div className="rounded-3xl border border-blue-100 bg-blue-50/70 p-5 sm:col-span-2">
-          <div className="flex items-start gap-3"><div className="flex size-10 shrink-0 items-center justify-center rounded-xl bg-[#071a9a] text-white"><Route className="size-5" /></div><div><p className="font-black text-[#071a9a]">Não é um mural de fretes.</p><p className="mt-1 text-sm leading-6 text-slate-600">Cada solicitação gera um matching por requisitos. Retornos vazios entram como disponibilidade e viram oportunidades melhores para todos.</p></div></div>
-        </div>
-      </section>
-    </main>
-  )
+function ContractorHome({ profile, hasActive, onNew, onTracking, onLogout }: { profile: DemoProfile; hasActive: boolean; onNew: () => void; onTracking: () => void; onLogout: () => void }) {
+  return <Page label="Área do contratante"><div className="flex items-start justify-between gap-3"><div><Eyebrow>Painel do contratante</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Olá, {profile.name.split(' ')[0]}!</h1><p className="mt-1 text-sm text-slate-500">O que você precisa transportar hoje?</p></div><button type="button" onClick={onLogout} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-bold text-slate-600">Sair</button></div><section className="mt-6 rounded-3xl bg-[#071a9a] p-6 text-white"><Package className="size-8 text-[#f5a800]" /><h2 className="mt-4 text-2xl font-black">Preciso de transporte</h2><p className="mt-2 text-sm leading-6 text-blue-100">Conte a rota e a carga. Encontraremos opções compatíveis com sua necessidade.</p><div className="mt-5"><PrimaryButton onClick={onNew}>Nova solicitação <ArrowRight className="size-4" /></PrimaryButton></div></section><section className="mt-5 rounded-3xl bg-white p-5 shadow-sm"><h2 className="text-lg font-black text-[#071a9a]">Solicitação ativa</h2>{hasActive ? <><p className="mt-2 text-sm text-slate-600">Fortaleza → Sobral · Transporte confirmado</p><button type="button" onClick={onTracking} className="mt-3 text-sm font-black text-[#071a9a]">Ver acompanhamento →</button></> : <p className="mt-2 text-sm text-slate-500">Nenhuma solicitação ativa nesta sessão.</p>}</section><section className="mt-4 rounded-3xl bg-white p-5 shadow-sm"><h2 className="text-lg font-black text-[#071a9a]">Transportes recentes</h2><p className="mt-2 text-sm text-slate-500">Fortaleza → Maracanaú · Entregue · Dado demonstrativo</p></section></Page>
 }
 
 function RouteStep({ data, update, onBack, onNext }: { data: RequestData; update: (patch: Partial<RequestData>) => void; onBack: () => void; onNext: () => void }) {
@@ -191,7 +168,7 @@ function RouteStep({ data, update, onBack, onNext }: { data: RequestData; update
       <Progress active={0} /><Eyebrow>Etapa 1 de 4</Eyebrow><h1 className="mt-2 text-3xl font-black tracking-tight text-[#071a9a]">Qual é a rota?</h1><p className="mt-2 text-sm leading-6 text-slate-500">Começamos pela localização e pelo prazo para buscar quem pode atender você.</p>
       <form onSubmit={(event) => { event.preventDefault(); onNext() }} className="mt-6 space-y-4">
         <section className="space-y-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><Field label="Origem" value={data.origin} onChange={(origin) => update({ origin })} placeholder="Bairro, cidade" /><Field label="Destino" value={data.destination} onChange={(destination) => update({ destination })} placeholder="Bairro, cidade" /></section>
-        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center gap-2 text-sm font-black text-slate-800"><CalendarDays className="size-4 text-[#f5a800]" /> Data da coleta</div><div className="mt-3 grid grid-cols-3 gap-2">{['Hoje', 'Amanhã', 'Escolher data'].map((date) => <button key={date} type="button" onClick={() => update({ date })} className={`rounded-xl px-2 py-3 text-xs font-extrabold ${data.date === date ? 'bg-[#071a9a] text-white' : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200'}`}>{date}</button>)}</div><div className="mt-4"><SelectField label="Janela de horário" value={data.window} onChange={(window) => update({ window })} options={['16h–18h', '18h–20h', '08h–10h', 'Horário flexível']} /></div></section>
+        <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center gap-2 text-sm font-black text-slate-800"><CalendarDays className="size-4 text-[#f5a800]" /> Data da coleta</div><div className="mt-3 grid grid-cols-3 gap-2">{['Hoje', 'Amanhã', 'Escolher data'].map((date) => <button key={date} type="button" onClick={() => update({ date })} className={`rounded-xl px-2 py-3 text-xs font-extrabold ${data.date === date ? 'bg-[#071a9a] text-white' : 'bg-slate-50 text-slate-500 ring-1 ring-slate-200'}`}>{date}</button>)}</div>{data.date === 'Escolher data' && <label className="mt-3 block text-sm font-bold text-slate-700">Escolha a data<input required type="date" value={data.customDate} min={new Date().toISOString().slice(0, 10)} onChange={(event) => update({ customDate: event.target.value })} className="mt-1 h-12 w-full rounded-xl border border-slate-200 px-3" /></label>}<div className="mt-4"><SelectField label="Janela de horário" value={data.window} onChange={(window) => update({ window })} options={['16h–18h', '18h–20h', '08h–10h', 'Horário flexível']} /></div></section>
         <PrimaryButton type="submit">Continuar para carga <ArrowRight className="size-4" /></PrimaryButton>
       </form>
     </Page>
@@ -203,7 +180,7 @@ function CargoStep({ data, update, onBack, onNext }: { data: RequestData; update
     <Page onBack={onBack} label="Solicitação de transporte">
       <Progress active={1} /><Eyebrow>Etapa 2 de 4</Eyebrow><h1 className="mt-2 text-3xl font-black tracking-tight text-[#071a9a]">Conte sobre a carga</h1><p className="mt-2 text-sm leading-6 text-slate-500">Essas informações determinam capacidade, carroceria e cuidados necessários.</p>
       <form onSubmit={(event) => { event.preventDefault(); onNext() }} className="mt-6 space-y-4">
-        <section className="grid gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:grid-cols-2"><SelectField label="Tipo de carga" value={data.cargoType} onChange={(cargoType) => update({ cargoType })} options={['Equipamentos', 'Estruturas', 'Materiais', 'Máquinas', 'Mercadorias', 'Outros']} /><Field label="Peso aproximado" value={data.weight} onChange={(weight) => update({ weight })} placeholder="Ex.: 4,2 t" /><Field label="Dimensões" value={data.dimensions} onChange={(dimensions) => update({ dimensions })} placeholder="Compr. × larg. × alt." /><Field label="Quantidade / volumes" value={data.volumes} onChange={(volumes) => update({ volumes })} placeholder="Ex.: 6 volumes" /><label className="flex flex-col gap-1.5 text-sm font-bold text-slate-700 sm:col-span-2"><span>Observações</span><textarea value={data.notes} onChange={(event) => update({ notes: event.target.value })} className="min-h-24 rounded-xl border border-slate-200 bg-[#fffefa] p-3 text-sm font-medium outline-none" /></label></section>
+        <section className="grid gap-4 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100 sm:grid-cols-2"><SelectField label="Tipo de carga" value={data.cargoType} onChange={(cargoType) => update({ cargoType })} options={['Equipamentos', 'Estruturas', 'Materiais', 'Máquinas', 'Mercadorias', 'Outros']} /><Field label="Peso aproximado" value={data.weight} onChange={(weight) => update({ weight })} placeholder="Ex.: 4,2 t" /><Field label="Dimensões" value={data.dimensions} onChange={(dimensions) => update({ dimensions })} placeholder="Compr. × larg. × alt." /><Field label="Quantidade / volumes" value={data.volumes} onChange={(volumes) => update({ volumes })} placeholder="Ex.: 6 volumes" /><label className="flex flex-col gap-1.5 text-sm font-bold text-slate-700 sm:col-span-2"><span>Observações</span><textarea value={data.notes} onChange={(event) => update({ notes: event.target.value })} className="min-h-24 rounded-xl border border-slate-200 bg-[#fffefa] p-3 text-sm font-medium outline-none" /></label><label className="flex flex-col gap-1.5 text-sm font-bold text-slate-700 sm:col-span-2"><span>Foto da carga (opcional)</span><input type="file" accept="image/*" onChange={(event) => update({ photoName: event.target.files?.[0]?.name ?? '' })} className="text-xs" /><span className="text-xs font-normal text-slate-400">{data.photoName ? `${data.photoName} selecionada apenas nesta sessão` : 'Nenhum arquivo enviado; demonstração sem upload.'}</span></label></section>
         <PrimaryButton type="submit">Continuar para veículo <ArrowRight className="size-4" /></PrimaryButton>
       </form>
     </Page>
@@ -212,7 +189,7 @@ function CargoStep({ data, update, onBack, onNext }: { data: RequestData; update
 
 function VehicleRecommendation({ data, update }: { data: RequestData; update: (patch: Partial<RequestData>) => void }) {
   return (
-    <section className="overflow-hidden rounded-3xl bg-[#071a9a] text-white shadow-xl shadow-blue-950/15"><div className="p-5"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5a800] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white"><Sparkles className="size-3" /> Veículo recomendado</span><div className="mt-5 flex items-center gap-4"><div className="flex size-14 items-center justify-center rounded-2xl bg-white/10"><Truck className="size-8 text-[#f5a800]" /></div><div><h2 className="text-2xl font-black">{data.vehicle}</h2><p className="text-sm font-bold text-blue-100">{data.body}</p></div></div><p className="mt-4 text-sm leading-6 text-blue-100">Compatível com o peso, as dimensões e o tipo de carga informados.</p><div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold"><span className="rounded-xl bg-white/10 p-3"><Weight className="mb-1 size-4 text-[#f5a800]" /> Capacidade até 14 t</span><span className="rounded-xl bg-white/10 p-3"><ShieldCheck className="mb-1 size-4 text-[#f5a800]" /> Carga bem acomodada</span></div></div><div className="grid grid-cols-2 border-t border-white/10 bg-white/5 p-3"><SelectField label="Veículo" value={data.vehicle} onChange={(vehicle) => update({ vehicle })} options={['VUC', 'Toco', 'Truck', 'Bitruck', 'Carreta']} /><div className="pl-2"><SelectField label="Carroceria" value={data.body} onChange={(body) => update({ body })} options={['Baú', 'Carga seca', 'Carroceria aberta', 'Sider', 'Plataforma']} /></div></div></section>
+    <section className="overflow-hidden rounded-3xl bg-[#071a9a] text-white shadow-xl shadow-blue-950/15"><div className="p-5"><span className="inline-flex items-center gap-1.5 rounded-full bg-[#f5a800] px-3 py-1 text-[11px] font-black uppercase tracking-wider text-white"><Sparkles className="size-3" /> Veículo recomendado</span><div className="mt-5 flex items-center gap-4"><div className="flex size-14 items-center justify-center rounded-2xl bg-white/10"><Truck className="size-8 text-[#f5a800]" /></div><div><h2 className="text-2xl font-black">{data.vehicle}</h2><p className="text-sm font-bold text-blue-100">{data.body}</p></div></div><p className="mt-4 text-sm leading-6 text-blue-100">Recomendação demonstrativa com base nos dados informados. Confirme os requisitos antes de contratar.</p><div className="mt-4 grid grid-cols-2 gap-2 text-xs font-bold"><span className="rounded-xl bg-white/10 p-3"><Weight className="mb-1 size-4 text-[#f5a800]" /> Capacidade até 14 t</span><span className="rounded-xl bg-white/10 p-3"><ShieldCheck className="mb-1 size-4 text-[#f5a800]" /> Carga bem acomodada</span></div></div><div className="grid grid-cols-2 border-t border-white/10 bg-white/5 p-3"><SelectField label="Veículo" value={data.vehicle} onChange={(vehicle) => update({ vehicle })} options={['VUC', 'Toco', 'Truck', 'Bitruck', 'Carreta']} /><div className="pl-2"><SelectField label="Carroceria" value={data.body} onChange={(body) => update({ body })} options={['Baú', 'Carga seca', 'Carroceria aberta', 'Sider', 'Plataforma']} /></div></div></section>
   )
 }
 
@@ -239,7 +216,8 @@ function MatchBadge({ value }: { value: number }) { return <span className="roun
 function CarrierCard({ carrier, expanded, onExpand, onSelect }: { carrier: Carrier; expanded: boolean; onExpand: () => void; onSelect: () => void }) {
   return (
     <article className={`rounded-3xl bg-white p-5 shadow-sm ring-1 ${carrier.id === 1 ? 'ring-[#f5a800]' : 'ring-slate-100'}`}><div className="flex items-start gap-3"><div style={{ background: carrier.color }} className="flex size-12 shrink-0 items-center justify-center rounded-2xl text-sm font-black text-white">{carrier.initials}</div><div className="min-w-0 flex-1"><div className="flex flex-wrap items-center gap-2"><h2 className="font-black text-slate-900">{carrier.name}</h2><BadgeCheck className="size-4 fill-blue-50 text-[#071a9a]" /></div><p className="mt-0.5 text-xs font-semibold text-slate-500">{carrier.vehicle} · {carrier.body}</p></div><MatchBadge value={carrier.match} /></div><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><span className="text-slate-400">Disponibilidade</span><p className="mt-1 font-extrabold text-emerald-700">● {carrier.availability}</p></div><div className="rounded-xl bg-slate-50 p-3"><span className="text-slate-400">Chegada estimada</span><p className="mt-1 font-extrabold text-slate-800">{carrier.eta}</p></div></div>
-      {expanded && <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-center text-[11px]"><div><Star className="mx-auto size-4 fill-[#f5a800] text-[#f5a800]" /><p className="mt-1 font-black">{carrier.rating}</p><span className="text-slate-400">{carrier.trips} viagens</span></div><div><Gauge className="mx-auto size-4 text-[#071a9a]" /><p className="mt-1 font-black">{carrier.capacity}</p><span className="text-slate-400">Capacidade</span></div><div><LocateFixed className="mx-auto size-4 text-[#071a9a]" /><p className="mt-1 font-black">{carrier.distance}</p><span className="text-slate-400">Localização</span></div><p className="col-span-3 mt-2 rounded-xl bg-blue-50 p-3 text-left font-semibold leading-5 text-[#071a9a]">{carrier.note}</p></div>}
+      {expanded && <div className="mt-3 grid grid-cols-3 gap-2 border-t border-slate-100 pt-3 text-center text-[11px]"><div><Star className="mx-auto size-4 fill-[#f5a800] text-[#f5a800]" /><p className="mt-1 font-black">{carrier.rating}</p><span className="text-slate-400">{carrier.trips} operações</span></div><div><Gauge className="mx-auto size-4 text-[#071a9a]" /><p className="mt-1 font-black">{carrier.capacity}</p><span className="text-slate-400">Capacidade</span></div><div><LocateFixed className="mx-auto size-4 text-[#071a9a]" /><p className="mt-1 font-black">{carrier.distance}</p><span className="text-slate-400">Localização</span></div><p className="col-span-3 mt-2 rounded-xl bg-blue-50 p-3 text-left font-semibold leading-5 text-[#071a9a]">{carrier.note}<br />{carrier.completion} · Documentos conferidos (mock) · Desvio {carrier.detour}</p></div>}
+      <div className="mt-3 rounded-xl bg-amber-50 p-3 text-xs text-slate-700"><p>Faixa estimada: <strong>{carrier.priceRange}</strong></p><p className="mt-1 font-bold text-emerald-700">{carrier.priceStatus}</p><p className="mt-1 text-[11px] text-slate-500" title="Faixa demonstrativa baseada em rota, veículo e requisitos.">ⓘ Estimativa demonstrativa por rota, veículo e requisitos. Sem teto de preço.</p></div>
       <div className="mt-4 flex items-end justify-between gap-3 border-t border-slate-100 pt-4"><div><span className="text-xs text-slate-400">Proposta</span><p className="text-xl font-black text-[#071a9a]">{carrier.price}</p></div><div className="flex gap-2"><button type="button" onClick={onExpand} className="rounded-xl border border-slate-200 px-3 py-2 text-xs font-extrabold text-slate-600">{expanded ? 'Fechar' : 'Ver detalhes'}</button><button type="button" onClick={onSelect} className="rounded-xl bg-[#f5a800] px-3 py-2 text-xs font-black text-white">Selecionar</button></div></div></article>
   )
 }
@@ -255,11 +233,11 @@ function SummaryRow({ label, value }: { label: string; value: string }) { return
 
 function Confirmation({ data, carrier, onBack, onConfirm }: { data: RequestData; carrier: Carrier; onBack: () => void; onConfirm: () => void }) {
   return (
-    <Page onBack={onBack} label="Confirmação"><Eyebrow>Revise os dados</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Tudo certo para confirmar?</h1><section className="mt-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><SummaryRow label="Origem" value={data.origin} /><SummaryRow label="Destino" value={data.destination} /><SummaryRow label="Carga" value={`${data.cargoType} · ${data.weight} · ${data.volumes}`} /><SummaryRow label="Veículo" value={`${data.vehicle} · ${data.body}`} /><SummaryRow label="Coleta" value={`${data.date}, ${data.window}`} /></section><section className="mt-4 flex items-center gap-4 rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100"><div style={{ background: carrier.color }} className="flex size-12 items-center justify-center rounded-2xl font-black text-white">{carrier.initials}</div><div className="flex-1"><p className="font-black text-[#071a9a]">{carrier.name}</p><p className="text-xs font-semibold text-slate-500">Verificado · {carrier.rating} ★ · chegada em {carrier.eta}</p></div><strong className="text-[#071a9a]">{carrier.price}</strong></section><div className="mt-5"><PrimaryButton onClick={onConfirm}><CheckCircle2 className="size-5" /> Confirmar transporte</PrimaryButton></div><p className="mt-3 text-center text-[11px] leading-5 text-slate-400">Demonstração: valor, aceite e transportador são dados ilustrativos.</p></Page>
+    <Page onBack={onBack} label="Confirmação"><Eyebrow>Revise os dados</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Tudo certo para confirmar?</h1><section className="mt-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><SummaryRow label="Origem" value={data.origin} /><SummaryRow label="Destino" value={data.destination} /><SummaryRow label="Carga" value={`${data.cargoType} · ${data.weight} · ${data.volumes}`} /><SummaryRow label="Veículo" value={`${data.vehicle} · ${data.body}`} /><SummaryRow label="Coleta" value={`${data.date === 'Escolher data' ? data.customDate : data.date}, ${data.window}`} /></section><section className="mt-4 flex items-center gap-4 rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100"><div style={{ background: carrier.color }} className="flex size-12 items-center justify-center rounded-2xl font-black text-white">{carrier.initials}</div><div className="flex-1"><p className="font-black text-[#071a9a]">{carrier.name}</p><p className="text-xs font-semibold text-slate-500">Verificado · {carrier.rating} ★ · chegada em {carrier.eta}</p></div><strong className="text-[#071a9a]">{carrier.price}</strong></section><div className="mt-5"><PrimaryButton onClick={onConfirm}><CheckCircle2 className="size-5" /> Confirmar transporte</PrimaryButton></div><p className="mt-3 text-center text-[11px] leading-5 text-slate-400">Demonstração: valor, aceite e transportador são dados ilustrativos.</p></Page>
   )
 }
 
-const demoRoute: [number, number][] = [[-3.7275, -38.5275], [-3.72, -38.49], [-3.69, -38.48], [-3.64, -38.51], [-3.59, -38.56], [-3.31, -39.02], [-3.1, -40.02], [-3.69, -40.35]]
+const demoRoute: [number, number][] = [[-3.7275, -38.5275], [-3.735, -38.67], [-3.65, -38.91], [-3.6, -39.1], [-3.69, -39.36], [-3.68, -39.59], [-3.66, -39.83], [-3.69, -40.35]]
 
 function Tracking({ carrier, onHome }: { data: RequestData; carrier: Carrier; onHome: () => void }) {
   const [stage, setStage] = useState(1)
@@ -270,48 +248,69 @@ function Tracking({ carrier, onHome }: { data: RequestData; carrier: Carrier; on
 
 const availabilityOptions: { id: Availability; title: string; icon: string; tone: string }[] = [{ id: 'now', title: 'Disponível agora', icon: '●', tone: 'text-emerald-600' }, { id: 'later', title: 'Disponível mais tarde', icon: '◷', tone: 'text-amber-600' }, { id: 'route', title: 'Em rota', icon: '↗', tone: 'text-blue-600' }, { id: 'empty', title: 'Retornando vazio', icon: '↩', tone: 'text-[#f5a800]' }, { id: 'offline', title: 'Indisponível', icon: '●', tone: 'text-slate-400' }]
 
-function AvailabilitySelector({ value, onChange }: { value: Availability; onChange: (value: Availability) => void }) {
+function AvailabilitySelector({ value, onChange, operation, updateOperation }: { value: Availability; onChange: (value: Availability) => void; operation: OperationSettings; updateOperation: (patch: Partial<OperationSettings>) => void }) {
   const showRoute = value === 'route' || value === 'empty'
   return (
-    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center justify-between"><div><Eyebrow>Minha disponibilidade</Eyebrow><h2 className="mt-1 text-xl font-black text-[#071a9a]">Como você está hoje?</h2></div><span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-[#071a9a]"><Navigation className="size-5" /></span></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{availabilityOptions.map((option) => <button key={option.id} type="button" onClick={() => onChange(option.id)} className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-xs font-extrabold ring-1 ${value === option.id ? 'bg-[#071a9a] text-white ring-[#071a9a]' : 'bg-[#fffefa] text-slate-600 ring-slate-200'}`}><span className={value === option.id ? 'text-[#f5a800]' : option.tone}>{option.icon}</span>{option.title}</button>)}</div>{showRoute && <div className="mt-4 grid gap-3 rounded-2xl bg-orange-50/70 p-4 sm:grid-cols-2"><Field label="Origem atual" value="Fortaleza" onChange={() => undefined} placeholder="Cidade" /><Field label="Destino" value="Sobral" onChange={() => undefined} placeholder="Cidade" /><Field label="Saída estimada" value="17:30" onChange={() => undefined} placeholder="Horário" /><Field label="Capacidade disponível" value="5 t" onChange={() => undefined} placeholder="Ex.: 5 t" /><p className="rounded-xl bg-white p-3 text-xs font-bold leading-5 text-[#071a9a] sm:col-span-2"><Sparkles className="mr-1 inline size-3.5 text-[#f5a800]" /> Encontramos uma oportunidade compatível com sua rota de retorno.</p></div>}</section>
+    <section className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center justify-between"><div><Eyebrow>Minha disponibilidade</Eyebrow><h2 className="mt-1 text-xl font-black text-[#071a9a]">Como você está hoje?</h2></div><span className="flex size-10 items-center justify-center rounded-xl bg-blue-50 text-[#071a9a]"><Navigation className="size-5" /></span></div><div className="mt-4 grid gap-2 sm:grid-cols-2">{availabilityOptions.map((option) => <button key={option.id} type="button" onClick={() => onChange(option.id)} className={`flex items-center gap-2 rounded-xl px-3 py-3 text-left text-xs font-extrabold ring-1 ${value === option.id ? 'bg-[#071a9a] text-white ring-[#071a9a]' : 'bg-[#fffefa] text-slate-600 ring-slate-200'}`}><span className={value === option.id ? 'text-[#f5a800]' : option.tone}>{option.icon}</span>{option.title}</button>)}</div>{showRoute && <div className="mt-4 grid gap-3 rounded-2xl bg-orange-50/70 p-4 sm:grid-cols-2"><Field label="Origem atual" value={operation.origin} onChange={(origin) => updateOperation({ origin })} placeholder="Cidade" /><Field label="Destino" value={operation.destination} onChange={(destination) => updateOperation({ destination })} placeholder="Cidade" /><Field label="Saída estimada" value={operation.departure} onChange={(departure) => updateOperation({ departure })} placeholder="Horário" /><Field label="Capacidade disponível" value={operation.capacity} onChange={(capacity) => updateOperation({ capacity })} placeholder="Ex.: 5 t" /><Field label="Desvio máximo aceito (km)" value={operation.maxDetour} onChange={(maxDetour) => updateOperation({ maxDetour })} placeholder="Ex.: 15" type="number" /><p className="rounded-xl bg-white p-3 text-xs font-bold leading-5 text-[#071a9a] sm:col-span-2"><Sparkles className="mr-1 inline size-3.5 text-[#f5a800]" /> Oportunidades são filtradas pela sua rota, capacidade e desvio.</p></div>}</section>
   )
 }
 
 function OpportunityCard({ item, onOpen }: { item: Opportunity; onOpen: () => void }) {
   return (
-    <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center justify-between gap-3"><MatchBadge value={item.match} /><strong className="text-lg text-[#071a9a]">{item.price}</strong></div><h3 className="mt-4 text-xl font-black text-slate-900">{item.from} <span className="text-slate-300">→</span> {item.to}</h3><p className="mt-1 text-xs font-semibold text-slate-400">{item.distance} · desvio da sua rota: <strong className="text-emerald-700">{item.detour}</strong></p><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><Package className="mb-1 size-4 text-[#f5a800]" /><strong>{item.cargo}</strong><p className="mt-1 text-slate-400">{item.weight}</p></div><div className="rounded-xl bg-slate-50 p-3"><Truck className="mb-1 size-4 text-[#071a9a]" /><strong>{item.vehicle}</strong><p className="mt-1 text-slate-400">{item.collection}</p></div></div><button type="button" onClick={onOpen} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#071a9a] text-sm font-black text-white">Ver oportunidade <ChevronRight className="size-4" /></button></article>
+    <article className="rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><div className="flex items-center justify-between gap-3"><MatchBadge value={item.match} /><strong className="whitespace-nowrap text-base text-[#071a9a]">{item.price}</strong></div><h3 className="mt-4 text-xl font-black text-slate-900">{item.from} <span className="text-slate-300">→</span> {item.to}</h3><p className="mt-1 text-xs font-semibold text-slate-400">{item.distance} · desvio da sua rota: <strong className="text-emerald-700">{item.detour}</strong></p><div className="mt-4 grid grid-cols-2 gap-2 text-xs"><div className="rounded-xl bg-slate-50 p-3"><Package className="mb-1 size-4 text-[#f5a800]" /><strong>{item.cargo}</strong><p className="mt-1 text-slate-400">{item.weight}</p></div><div className="rounded-xl bg-slate-50 p-3"><Truck className="mb-1 size-4 text-[#071a9a]" /><strong>{item.vehicle}</strong><p className="mt-1 text-slate-400">{item.collection}</p></div></div><p className="mt-3 text-xs text-slate-600">Faixa estimada: <strong>{item.priceRange}</strong> · Dado simulado</p><button type="button" onClick={onOpen} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#071a9a] text-sm font-black text-white">Ver oportunidade <ChevronRight className="size-4" /></button></article>
   )
 }
 
-function CarrierHome({ onBack, onOpportunity }: { onBack: () => void; onOpportunity: (item: Opportunity) => void }) {
+function CarrierHome({ profile, onBack, onOpportunity, onOperation }: { profile: DemoProfile; onBack: () => void; onOpportunity: (item: Opportunity) => void; onOperation: () => void }) {
   const [availability, setAvailability] = useState<Availability>('empty')
-  useEffect(() => { try { window.localStorage.setItem('usefrete-availability', availability) } catch { /* modo privado */ } }, [availability])
+  const [operation, setOperation] = useState<OperationSettings>(defaultOperation)
+  useEffect(() => { try { const saved = JSON.parse(window.localStorage.getItem('usefrete-operation-v1') ?? 'null'); if (saved) { setAvailability(saved.availability ?? 'empty'); setOperation({ ...defaultOperation, ...saved.operation }) } } catch { /* modo privado */ } }, [])
+  useEffect(() => { try { window.localStorage.setItem('usefrete-operation-v1', JSON.stringify({ availability, operation })) } catch { /* modo privado */ } }, [availability, operation])
+  const capacity = Number.parseFloat(operation.capacity.replace(',', '.')) || 0
+  const maxDetour = Number.parseFloat(operation.maxDetour) || 0
+  const matched = availability === 'offline' ? [] : opportunities.filter((item) => {
+    const weight = Number.parseFloat(item.weight.replace(',', '.'))
+    const detour = Number.parseFloat(item.detour.replace(/[+]/g, ''))
+    const vehicleFits = item.vehicle.toLowerCase().split(' ou ').some((option) => option.includes(profile.vehicle.toLowerCase()))
+    const routeFits = availability !== 'route' && availability !== 'empty' || (operation.destination.toLowerCase() === item.to.toLowerCase() && operation.origin.toLowerCase() === item.from.toLowerCase())
+    return vehicleFits && capacity >= weight && maxDetour >= detour && routeFits
+  })
   return (
-    <Page onBack={onBack} label="Área do transportador" wide><div className="flex flex-wrap items-end justify-between gap-3"><div><Eyebrow>Painel do transportador</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Olá, João!</h1><p className="mt-1 text-sm text-slate-500">Truck · Carroceria aberta · Perfil verificado</p></div><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700"><BadgeCheck className="size-4" /> Verificado</span></div><div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]"><AvailabilitySelector value={availability} onChange={setAvailability} /><section><Eyebrow>Oportunidades para você</Eyebrow><h2 className="mt-1 text-2xl font-black text-slate-900">Fretes compatíveis</h2><p className="mt-1 text-sm text-slate-500">Ordenados pela sua rota, veículo e disponibilidade.</p><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">{opportunities.map((item) => <OpportunityCard key={item.id} item={item} onOpen={() => onOpportunity(item)} />)}</div></section></div></Page>
+    <Page onBack={onBack} label="Área do transportador" wide><div className="flex flex-wrap items-end justify-between gap-3"><div><Eyebrow>Painel do transportador</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Olá, {profile.name.split(' ')[0]}!</h1><p className="mt-1 text-sm text-slate-500">{profile.vehicle} · {profile.body} · Perfil demonstrativo</p></div><span className="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-3 py-1.5 text-xs font-black text-emerald-700"><BadgeCheck className="size-4" /> Verificado (mock)</span></div><div className="mt-4 flex gap-2"><button type="button" onClick={onOperation} className="min-h-11 rounded-xl bg-[#071a9a] px-4 text-sm font-black text-white">Minha operação</button><button type="button" onClick={onBack} className="min-h-11 rounded-xl border border-slate-200 px-4 text-sm font-bold text-slate-600">Sair</button></div><div className="mt-5 grid gap-5 lg:grid-cols-[0.9fr_1.1fr]"><div className="space-y-4"><AvailabilitySelector value={availability} onChange={setAvailability} operation={operation} updateOperation={(patch) => setOperation((current) => ({ ...current, ...patch }))} /><div className="rounded-3xl bg-white p-5 shadow-sm"><Eyebrow>Minha operação</Eyebrow><p className="mt-2 text-sm font-bold text-[#071a9a]">{profile.vehicle} · {profile.capacity || operation.capacity}</p><p className="mt-1 text-sm text-slate-500">{operation.origin} → {operation.destination} · {availabilityOptions.find((item) => item.id === availability)?.title}</p><p className="mt-2 text-xs text-slate-400">Dados demonstrativos</p></div></div><section><Eyebrow>Oportunidades para você</Eyebrow><h2 className="mt-1 text-2xl font-black text-slate-900">Fretes compatíveis</h2><p className="mt-1 text-sm text-slate-500">Filtrados por rota, veículo, capacidade, desvio e disponibilidade.</p><div className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-1 xl:grid-cols-2">{matched.length ? matched.map((item) => <OpportunityCard key={item.id} item={item} onOpen={() => onOpportunity(item)} />) : <p className="rounded-2xl bg-white p-5 text-sm text-slate-600">Nenhuma oportunidade atende aos filtros atuais. Ajuste sua rota, capacidade ou desvio máximo.</p>}</div></section></div></Page>
   )
 }
 
 function OpportunityDetail({ item, onBack }: { item: Opportunity; onBack: () => void }) {
   const [sent, setSent] = useState(false)
   return (
-    <Page onBack={onBack} label="Oportunidade compatível"><div className="flex items-center justify-between"><MatchBadge value={item.match} /><strong className="text-2xl text-[#071a9a]">{item.price}</strong></div><h1 className="mt-4 text-3xl font-black text-[#071a9a]">{item.from} → {item.to}</h1><p className="mt-2 text-sm text-slate-500">{item.company} · {item.distance} · coleta {item.collection.toLowerCase()}</p><section className="mt-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><SummaryRow label="Carga" value={item.cargo} /><SummaryRow label="Peso" value={item.weight} /><SummaryRow label="Dimensões" value={item.dimensions} /><SummaryRow label="Veículo" value={item.vehicle} /><SummaryRow label="Desvio da sua rota" value={item.detour} /></section><section className="mt-4 rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100"><p className="text-sm font-black text-[#071a9a]">Requisitos da carga</p><div className="mt-3 flex flex-wrap gap-2">{item.requirements.map((requirement) => <span key={requirement} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600">✓ {requirement}</span>)}</div></section><div className="mt-5"><PrimaryButton onClick={() => setSent(true)} disabled={sent}>{sent ? <><CheckCircle2 className="size-5" /> Interesse enviado ao contratante</> : <>Tenho interesse <ArrowRight className="size-4" /></>}</PrimaryButton></div>{sent && <p className="mt-3 text-center text-sm font-bold text-emerald-700">Você será avisado quando o contratante responder.</p>}</Page>
+    <Page onBack={onBack} label="Oportunidade compatível"><div className="flex items-center justify-between"><MatchBadge value={item.match} /><strong className="text-2xl text-[#071a9a]">{item.price}</strong></div><h1 className="mt-4 text-3xl font-black text-[#071a9a]">{item.from} → {item.to}</h1><p className="mt-2 text-sm text-slate-500">{item.company} · {item.distance} · coleta {item.collection.toLowerCase()}</p><section className="mt-5 rounded-3xl bg-white p-5 shadow-sm ring-1 ring-slate-100"><SummaryRow label="Carga" value={item.cargo} /><SummaryRow label="Peso" value={item.weight} /><SummaryRow label="Dimensões" value={item.dimensions} /><SummaryRow label="Veículo" value={item.vehicle} /><SummaryRow label="Desvio da sua rota" value={item.detour} /><SummaryRow label="Faixa estimada" value={item.priceRange} /></section><section className="mt-4 rounded-3xl bg-blue-50 p-5 ring-1 ring-blue-100"><p className="text-sm font-black text-[#071a9a]">Contratante verificado (mock)</p><p className="mt-2 text-xs text-slate-600">{item.company} · 4,8 ★ · 42 fretes concluídos · Pagamentos confirmados (simulação)</p><p className="mt-4 text-sm font-black text-[#071a9a]">Requisitos da carga</p><div className="mt-3 flex flex-wrap gap-2">{item.requirements.map((requirement) => <span key={requirement} className="rounded-full bg-white px-3 py-1.5 text-xs font-bold text-slate-600">✓ {requirement}</span>)}</div></section><div className="mt-5"><PrimaryButton onClick={() => setSent(true)} disabled={sent}>{sent ? <><CheckCircle2 className="size-5" /> Interesse registrado</> : <>Tenho interesse <ArrowRight className="size-4" /></>}</PrimaryButton></div>{sent && <p className="mt-3 text-center text-sm font-bold text-emerald-700">Interesse registrado apenas nesta demonstração; nenhum aviso real será enviado.</p>}</Page>
   )
 }
 
+function OperationHistory({ onBack }: { onBack: () => void }) {
+  return <Page onBack={onBack} label="Minha operação"><Eyebrow>Ecossistema do transportador</Eyebrow><h1 className="mt-2 text-3xl font-black text-[#071a9a]">Minha operação</h1><p className="mt-2 text-sm text-slate-500">Resumo ilustrativo para demonstrar o valor além do matching.</p><div className="mt-5 grid grid-cols-2 gap-3">{[['42', 'Fretes concluídos'], ['R$ 18.900', 'Receita ilustrativa'], ['780 km', 'Km aproveitados'], ['4,9 ★', 'Avaliação']].map(([value, label]) => <div key={label} className="rounded-2xl bg-white p-4 shadow-sm"><strong className="text-xl text-[#071a9a]">{value}</strong><p className="mt-1 text-xs text-slate-500">{label}</p></div>)}</div><section className="mt-5 rounded-3xl bg-white p-5"><h2 className="text-lg font-black text-[#071a9a]">Rotas e histórico</h2><p className="mt-3 border-b border-slate-100 pb-3 text-sm">Fortaleza → Sobral · Concluído</p><p className="mt-3 border-b border-slate-100 pb-3 text-sm">Caucaia → Itapipoca · Concluído</p><p className="mt-3 text-sm">Próxima oportunidade: Fortaleza → Sobral</p></section><p className="mt-4 text-xs text-slate-400">Todos os valores, rotas e avaliações acima são dados demonstrativos.</p></Page>
+}
+
 export default function UseFreteApp() {
-  const [screen, setScreen] = useState<Screen>('welcome')
+  const [screen, setScreen] = useState<Screen>('auth')
+  const [profile, setProfile] = useState<DemoProfile | null>(null)
+  const [hasActive, setHasActive] = useState(false)
+  useEffect(() => { try { const active = readActiveProfile(); if (active) { setProfile(active); setScreen(active.role === 'contractor' ? 'contractor' : 'carrier') } } catch { /* armazenamento indisponível */ } }, [])
   const [request, setRequest] = useState<RequestData>(demoRequest)
   const [selectedCarrier, setSelectedCarrier] = useState<Carrier>(carriers[0])
   const [selectedOpportunity, setSelectedOpportunity] = useState<Opportunity>(opportunities[0])
   const updateRequest = (patch: Partial<RequestData>) => setRequest((current) => ({ ...current, ...patch }))
-  if (screen === 'welcome') return <Welcome onContractor={() => setScreen('route')} onCarrier={() => setScreen('carrier')} />
-  if (screen === 'route') return <RouteStep data={request} update={updateRequest} onBack={() => setScreen('welcome')} onNext={() => setScreen('cargo')} />
+  const logout = () => { try { clearActiveProfile() } catch { /* armazenamento indisponível */ }; setProfile(null); setScreen('auth') }
+  if (screen === 'auth') return <DemoAuth onEnter={(next) => { setProfile(next); setScreen(next.role === 'contractor' ? 'contractor' : 'carrier') }} />
+  if (screen === 'contractor' && profile) return <ContractorHome profile={profile} hasActive={hasActive} onNew={() => { setRequest(demoRequest); setScreen('route') }} onTracking={() => setScreen('tracking')} onLogout={logout} />
+  if (screen === 'route') return <RouteStep data={request} update={updateRequest} onBack={() => setScreen('contractor')} onNext={() => setScreen('cargo')} />
   if (screen === 'cargo') return <CargoStep data={request} update={updateRequest} onBack={() => setScreen('route')} onNext={() => setScreen('vehicle')} />
   if (screen === 'vehicle') return <VehicleStep data={request} update={updateRequest} onBack={() => setScreen('cargo')} onNext={() => setScreen('matching')} />
   if (screen === 'matching') return <Matching onDone={() => setScreen('results')} />
   if (screen === 'results') return <Results onBack={() => setScreen('vehicle')} onSelect={(carrier) => { setSelectedCarrier(carrier); setScreen('confirmation') }} />
-  if (screen === 'confirmation') return <Confirmation data={request} carrier={selectedCarrier} onBack={() => setScreen('results')} onConfirm={() => setScreen('tracking')} />
-  if (screen === 'tracking') return <Tracking data={request} carrier={selectedCarrier} onHome={() => setScreen('welcome')} />
-  if (screen === 'carrier') return <CarrierHome onBack={() => setScreen('welcome')} onOpportunity={(item) => { setSelectedOpportunity(item); setScreen('opportunity') }} />
+  if (screen === 'confirmation') return <Confirmation data={request} carrier={selectedCarrier} onBack={() => setScreen('results')} onConfirm={() => { setHasActive(true); setScreen('tracking') }} />
+  if (screen === 'tracking') return <Tracking data={request} carrier={selectedCarrier} onHome={() => setScreen('contractor')} />
+  if (screen === 'carrier' && profile) return <CarrierHome profile={profile} onBack={logout} onOpportunity={(item) => { setSelectedOpportunity(item); setScreen('opportunity') }} onOperation={() => setScreen('operation')} />
+  if (screen === 'operation') return <OperationHistory onBack={() => setScreen('carrier')} />
   return <OpportunityDetail item={selectedOpportunity} onBack={() => setScreen('carrier')} />
 }

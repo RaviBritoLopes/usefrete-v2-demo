@@ -1,95 +1,40 @@
 'use client'
 
-import { MapContainer, Marker, Polyline, Popup, useMap } from 'react-leaflet'
+import { useEffect, useState } from 'react'
+import { MapContainer, Marker, Polyline, Popup, TileLayer, useMap } from 'react-leaflet'
 import L from 'leaflet'
 import 'leaflet/dist/leaflet.css'
-import { useEffect, useMemo } from 'react'
 
 type Coordinate = [number, number]
+const makeIcon = (color: string, label: string) => L.divIcon({ className: 'usefrete-marker', html: `<span style="background:${color}" title="${label}"></span>`, iconSize: [22, 22], iconAnchor: [11, 11] })
 
-const fallbackRoute: Coordinate[] = [
-  [-3.7275, -38.5275],
-  [-3.724, -38.518],
-  [-3.713, -38.507],
-  [-3.704, -38.497],
-  [-3.694, -38.488],
-  [-3.683, -38.482],
-  [-3.671, -38.486],
-  [-3.658, -38.495],
-  [-3.646, -38.505],
-  [-3.634, -38.517],
-  [-3.622, -38.531],
-  [-3.612, -38.548],
-  [-3.604, -38.566],
-  [-3.6005, -38.584],
-  [-3.6105, -38.61],
-]
-
-const makeIcon = (color: string, label: string, glyph: string) =>
-  L.divIcon({
-    className: 'usefrete-marker',
-    html: `<span aria-label="${label}" style="background:${color}; box-shadow: 0 0 0 5px ${color}33"><b>${glyph}</b></span>`,
-    iconSize: [28, 28],
-    iconAnchor: [14, 14],
-  })
-
-function NavigationCamera({ origin, route, navigation }: { origin: Coordinate; route: Coordinate[]; navigation: boolean }) {
+function FitRoute({ route }: { route: Coordinate[] }) {
   const map = useMap()
-  const bearing = useMemo(() => {
-    const next = route.find((point) => Math.hypot(point[0] - origin[0], point[1] - origin[1]) > 0.0003) ?? route[1]
-    if (!next) return 0
-    const radians = Math.atan2(next[1] - origin[1], next[0] - origin[0])
-    return (radians * 180) / Math.PI
-  }, [origin, route])
-  useEffect(() => {
-    if (navigation) map.setView(origin, Math.max(map.getZoom(), 15), { animate: true })
-    else if (route.length > 1) map.fitBounds(route, { padding: [42, 42] })
-  }, [map, navigation, origin, route])
-  useEffect(() => {
-    const container = map.getContainer()
-    container.style.setProperty('--nav-bearing', `${-bearing}deg`)
-    container.classList.toggle('usefrete-navigation-camera', navigation)
-    return () => container.classList.remove('usefrete-navigation-camera')
-  }, [bearing, map, navigation])
+  useEffect(() => { map.fitBounds(route, { padding: [36, 36] }) }, [map, route])
   return null
 }
 
 function MapControls({ route }: { route: Coordinate[] }) {
   const map = useMap()
-  return (
-    <div className="pointer-events-auto absolute right-4 top-1/2 z-[500] flex -translate-y-1/2 flex-col gap-2">
-      <button type="button" aria-label="Aumentar zoom" onClick={() => map.zoomIn()} className="flex size-11 items-center justify-center rounded-full bg-black/85 text-2xl font-light text-white shadow-xl">+</button>
-      <button type="button" aria-label="Diminuir zoom" onClick={() => map.zoomOut()} className="flex size-11 items-center justify-center rounded-full bg-black/85 text-2xl font-light text-white shadow-xl">−</button>
-      <button type="button" aria-label="Visualizar rota completa" onClick={() => map.fitBounds(route, { padding: [42, 42] })} className="flex size-11 items-center justify-center rounded-full bg-black/85 text-lg text-white shadow-xl">◎</button>
-    </div>
-  )
+  return <div className="pointer-events-auto absolute right-3 top-3 z-[500] flex flex-col gap-2"><button type="button" aria-label="Aumentar zoom" onClick={() => map.zoomIn()} className="size-11 rounded-xl bg-white text-2xl font-bold text-[#071a9a] shadow">+</button><button type="button" aria-label="Diminuir zoom" onClick={() => map.zoomOut()} className="size-11 rounded-xl bg-white text-2xl font-bold text-[#071a9a] shadow">−</button><button type="button" aria-label="Visualizar rota completa" onClick={() => map.fitBounds(route, { padding: [36, 36] })} className="size-11 rounded-xl bg-white text-xl font-bold text-[#071a9a] shadow">◎</button></div>
 }
 
-export function RouteMap({ origin, destination, route = fallbackRoute, navigation = false }: { origin?: Coordinate; destination?: Coordinate; route?: Coordinate[]; navigation?: boolean }) {
-  const actualOrigin = origin ?? route[0]
-  const actualDestination = destination ?? route[route.length - 1]
-  const points = useMemo(() => {
-    if (!origin) return route
-    const nearestIndex = route.reduce((best, point, index) => {
-      const bestDistance = Math.hypot(route[best][0] - origin[0], route[best][1] - origin[1])
-      const distance = Math.hypot(point[0] - origin[0], point[1] - origin[1])
-      return distance < bestDistance ? index : best
-    }, 0)
-    return [origin, ...route.slice(nearestIndex + 1)]
-  }, [origin, route])
-
-  return (
-    <MapContainer center={actualOrigin} zoom={12} scrollWheelZoom zoomControl={false} className="usefrete-offline-map h-full w-full">
-      <NavigationCamera origin={actualOrigin} route={points} navigation={navigation} />
-      <Polyline positions={points} pathOptions={{ color: '#ffffff', weight: 11, opacity: 0.9 }} />
-      <Polyline positions={points} pathOptions={{ color: '#FF4500', weight: 7, opacity: 1 }} />
-      <Marker position={actualOrigin} icon={makeIcon('#000080', 'Localização atual', '●')}>
-        <Popup>Você está aqui</Popup>
-      </Marker>
-      <Marker position={actualDestination} icon={makeIcon('#FF4500', 'Destino da entrega', '▰')}>
-        <Popup>Destino da entrega</Popup>
-      </Marker>
-      <MapControls route={points} />
-    </MapContainer>
-  )
+export function RouteMap({ origin, destination, route, navigation = false }: { origin: Coordinate; destination: Coordinate; route: Coordinate[]; navigation?: boolean }) {
+  const [offline, setOffline] = useState(false)
+  const [loaded, setLoaded] = useState(false)
+  const [failedTiles, setFailedTiles] = useState(0)
+  useEffect(() => {
+    const update = () => { setOffline(!navigator.onLine); if (navigator.onLine) { setFailedTiles(0); setLoaded(false) } }
+    update()
+    window.addEventListener('online', update)
+    window.addEventListener('offline', update)
+    return () => { window.removeEventListener('online', update); window.removeEventListener('offline', update) }
+  }, [])
+  const showFallback = offline || (!loaded && failedTiles >= 3)
+  return <div className="relative h-full w-full overflow-hidden bg-[#dfeaec]">
+    {!showFallback && <MapContainer center={origin} zoom={9} scrollWheelZoom zoomControl={false} className="h-full w-full" preferCanvas><TileLayer attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png" eventHandlers={{ tileload: () => setLoaded(true), tileerror: () => setFailedTiles((count) => count + 1) }} /><FitRoute route={route} /><Polyline positions={route} pathOptions={{ color: '#071a9a', weight: 6, opacity: 0.9 }} /><Marker position={origin} icon={makeIcon('#071a9a', 'Origem')}><Popup>Origem · Fortaleza</Popup></Marker><Marker position={destination} icon={makeIcon('#f5a800', 'Destino')}><Popup>Destino · Sobral</Popup></Marker><Marker position={route[Math.min(2, route.length - 1)]} icon={makeIcon('#0f766e', 'Motorista simulado')}><Popup>Motorista · posição simulada</Popup></Marker><MapControls route={route} /></MapContainer>}
+    {showFallback && <div className="relative h-full w-full bg-[#dce8e4]" role="img" aria-label="Mapa local simplificado da rota Fortaleza a Sobral"><img src="/offline-route.svg" alt="Rota simplificada de Fortaleza até Sobral" className="h-full w-full object-contain" /><span className="absolute left-3 top-3 rounded-full bg-white px-3 py-2 text-xs font-black text-[#071a9a] shadow">Modo offline · mapa simplificado</span><button type="button" onClick={() => { setFailedTiles(0); setLoaded(false); setOffline(!navigator.onLine) }} className="absolute bottom-3 right-3 rounded-xl bg-white px-3 py-2 text-xs font-bold text-[#071a9a] shadow">Tentar mapa online</button></div>}
+    {!showFallback && !loaded && <span className="pointer-events-none absolute bottom-3 left-3 z-[500] rounded-lg bg-white/90 px-2 py-1 text-xs font-bold text-[#071a9a]">Carregando mapa…</span>}
+    {navigation && <span className="absolute bottom-3 left-3 z-[500] rounded-lg bg-white/90 px-2 py-1 text-[10px] text-slate-600">Posição simulada</span>}
+  </div>
 }
